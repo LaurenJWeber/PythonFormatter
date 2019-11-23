@@ -1,66 +1,87 @@
-#!/usr/bin/python
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
-#########################################################################
-# For each python file, replace tabs with 4 spaces, and strip trailing
-# whitespace if it exists on a line.  Run with --list-only option
-# to list Python files without formatting them.
-#########################################################################
+#################################################################################################
+# For each python file in the provided directory, replace tabs with 4 spaces, and strip trailing
+# whitespace if it exists on a line.
+# Run with --list-only option to list Python files without formatting them.
+# Run with --recursive option to recursively search subdirectories.
+#################################################################################################
 
-import sys
 import os
 import argparse
 
-#########################################################################
-# Find the python files for formatting.
-#########################################################################
 
-def findPythonFiles(directory, searchRecursive = False, listOnly = False):
+class PythonFormatter:
 
-    numFiles = 0
-    pyFiles = os.listdir(directory)
+    def __init__(self, search_recursive, list_only):
+        self.search_recursive = search_recursive
+        self.list_only = list_only
+        self.file_count = 0
 
-    for pyFile in pyFiles:
-        pyFileFull = os.path.join(directory, pyFile)
+    def process_python_files(self, directory):
+        """ Locate python files, pass each one to the format method.  Return the count of files found
 
-        if ((os.path.isdir(pyFileFull)) and (searchRecursive == True)):
-            numFiles += findPythonFiles(pyFileFull, True, listOnly)
+            Arguments:
+            directory - the folder in which to search.
+        """
 
-        elif (pyFileFull.lower().endswith(".py")):
-            numFiles += 1
-            print pyFileFull
+        py_files = os.listdir(directory)
 
-            if listOnly:
-                continue
-            formatPythonFile(pyFileFull)
+        for py_file in py_files:
+            py_file_full_path = os.path.join(directory, py_file)
 
-    return numFiles
+            if os.path.isdir(py_file_full_path) and self.search_recursive:
+                self.process_python_files(py_file_full_path)
 
-#########################################################################
-# Perform formatting: Remove trailing whitespace, tabs become 4 spaces.
-#########################################################################
+            elif py_file_full_path.lower().endswith(".py"):
+                self.file_count += 1
+                print(py_file_full_path)
 
-def formatPythonFile(fileToFormat):
+                if self.list_only:
+                    continue
+                self.format_python_file(py_file_full_path)
 
-    output = ""
+        return self.file_count
 
-    with open (fileToFormat, "r") as inFile:
-        for line in inFile:
-            line = line.rstrip()
-            line = line.replace("\t", "    ")
-            output += line + "\n"
+    def format_python_file(self, file_to_format):
+        """ Strip whitespace, and replace tabs with spaces. Return True if successful, otherwise False.
 
-    with open (fileToFormat, "w") as outFile:
-        outFile.write(output)
+            Arguments:
+            file_to_format - the full path to the file to format.
+        """
+
+        output = ""
+        is_successful = True
+
+        try:
+            with open(file_to_format, "r") as inFile:
+                for line in inFile:
+                    line = line.rstrip()
+                    line = line.replace("\t", "    ")
+                    output += line + "\n"
+
+            with open(file_to_format, "w") as outFile:
+                outFile.write(output)
+        except FileNotFoundError as not_found:
+            print(not_found.strerror)
+            is_successful = False
+        except PermissionError as permissions:
+            print(permissions.strerror)
+            is_successful = False
+
+        return is_successful
 
 #########################################################################
 # Main function.
 #########################################################################
 
+
 def main():
 
-    programDescription = ("Ensure consistent Python source formatting.  "
-                          "Replace tabs with 4 spaces, remove trailing whitespace.")
-    parser = argparse.ArgumentParser(description=programDescription)
+    program_description = ("Ensure consistent Python source formatting.  "
+                           "Replace tabs with 4 spaces, remove trailing whitespace.")
+    parser = argparse.ArgumentParser(description=program_description)
     parser.add_argument("-r", "--recursive", help="Search sub-directories recursively",
                         action="store_true")
     parser.add_argument("-l", "--list-only", help="List files only; don't format them",
@@ -68,27 +89,29 @@ def main():
     parser.add_argument("searchPath", help="Path to search for python files")
     args = parser.parse_args()
 
-    print "Path to search is {0}".format(args.searchPath)
+    print("Path to search is:", args.searchPath)
 
     if args.recursive:
-        print "Searching recursively through sub-directories."
+        print("Searching recursively through subdirectories.")
 
-    filesProcessed = 0
+    files_processed = 0
+    formatter = PythonFormatter(args.recursive, args.list_only)
 
     if os.path.exists(args.searchPath):
-        filesProcessed = findPythonFiles(args.searchPath, args.recursive, args.list_only)
+        files_processed = formatter.process_python_files(args.searchPath)
     else:
-        print "Path {0} does not exist or is inacessible.\n".format(args.searchPath)
+        print("Path", args.searchPath, "does not exist or is inaccessible.\n")
         exit()
 
     if args.list_only:
-        print "Found {0} python files.".format(filesProcessed)
+        print("Found",  files_processed, "python files.")
     else:
-        print "Processed {0} python files.".format(filesProcessed)
+        print("Processed",  files_processed, "python files.")
 
 #########################################################################
 # Begin!
 #########################################################################
+
 
 if __name__ == "__main__":
     main()
